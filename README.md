@@ -147,8 +147,12 @@ android\app\build\outputs\apk\release\app-release.apk
 ```
 
 Instalation Apk Release:
+
+```powershell
 cd android\app\build\outputs\apk\release\
 adb install -r app-release.apk
+```
+
 
 ## Akun dan Role
 
