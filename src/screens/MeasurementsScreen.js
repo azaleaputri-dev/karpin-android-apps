@@ -11,6 +11,7 @@ import {useAuth} from '../context/AuthContext';
 import {deleteMeasurement, fetchMeasurements, fetchPosyandus} from '../services/mobileData';
 import colors from '../theme/colors';
 import {borderRadius, spacing} from '../theme/design';
+import {canManageMeasurements, isReadOnlyViewer} from '../utils/permissions';
 
 function MeasurementsScreen({navigation}) {
   const {token, user} = useAuth();
@@ -22,6 +23,8 @@ function MeasurementsScreen({navigation}) {
   const [measurements, setMeasurements] = React.useState([]);
   const [errorMessage, setErrorMessage] = React.useState('');
   const [posyanduList, setPosyanduList] = React.useState([]);
+  const canEditMeasurements = canManageMeasurements(user);
+  const readOnlyViewer = isReadOnlyViewer(user);
 
   const loadPosyandus = React.useCallback(async () => {
     try { const r = await fetchPosyandus(token); setPosyanduList(r.data || []); }
@@ -40,7 +43,7 @@ function MeasurementsScreen({navigation}) {
     finally { setLoading(false); setRefreshing(false); }
   }, [search, source, posyanduId, token]);
 
-  React.useEffect(() => {loadPosyandus(); loadMeasurements(false);}, [loadPosyandus, loadMeasurements]);
+  React.useEffect(() => {if (!readOnlyViewer) loadPosyandus(); loadMeasurements(false);}, [loadPosyandus, loadMeasurements, readOnlyViewer]);
 
   const debouncedSearch = React.useRef(null);
   function handleSearch(text) {
@@ -87,7 +90,7 @@ function MeasurementsScreen({navigation}) {
           </View>
         </View>
         <Text style={styles.measDate}>{item.measured_at || '-'}</Text>
-          {user?.role ? (
+          {canEditMeasurements ? (
           <View style={styles.actionRow}>
             <Pressable onPress={() =>
               navigation.navigate('DataAnak', {
@@ -126,7 +129,7 @@ function MeasurementsScreen({navigation}) {
           <View>
             <View style={styles.headerSection}>
               <Text style={styles.headerTitle}>Riwayat Pengukuran</Text>
-              {user?.role ? (
+              {canEditMeasurements ? (
                 <Pressable onPress={() => navigation.navigate('DataAnak', {screen: 'CreateMeasurement'})} style={styles.addBtn}>
                   <Ionicons name="add" size={18} color={colors.white} />
                   <Text style={styles.addBtnText}>Tambah</Text>
@@ -160,7 +163,7 @@ function MeasurementsScreen({navigation}) {
                   </Pressable>
                 ) : null}
               </View>
-              {posyanduList.length > 0 ? (
+              {!readOnlyViewer && posyanduList.length > 0 ? (
                 <View style={styles.posyanduRow}>
                   <FilterChip active={posyanduId === ''} label="Semua Posyandu" onPress={() => setPosyanduId('')} />
                   {posyanduList.map(p => (

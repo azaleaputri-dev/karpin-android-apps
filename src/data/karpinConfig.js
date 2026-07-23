@@ -28,6 +28,19 @@ const roleContent = {
       {title: 'Pengukuran', subtitle: 'Catat tinggi, berat, suhu, dan catatan layanan', icon: 'analytics-outline', route: 'Pengukuran'},
     ],
   },
+  orangtua: {
+    badge: 'Orang Tua',
+    headline: 'Pantau perkembangan anak dari pengukuran posyandu terbaru.',
+    description:
+      'Akses khusus keluarga untuk melihat data anak dan riwayat pengukuran tanpa mengubah data.',
+    welcome: 'Pantau perkembangan anak',
+    navItems: [
+      {title: 'Dashboard', subtitle: 'Ringkasan perkembangan anak tertaut', icon: 'grid-outline', route: 'Dashboard'},
+      {title: 'Data Anak', subtitle: 'Lihat profil dan status gizi anak', icon: 'people-outline', route: 'DataAnak'},
+      {title: 'Pengukuran', subtitle: 'Lihat riwayat pengukuran anak', icon: 'analytics-outline', route: 'Pengukuran'},
+      {title: 'Profil Saya', subtitle: 'Lihat informasi akun keluarga', icon: 'person-circle-outline', route: 'Profile'},
+    ],
+  },
 };
 
 export {roleContent};

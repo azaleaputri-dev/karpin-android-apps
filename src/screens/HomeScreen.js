@@ -10,12 +10,18 @@ import {roleContent} from '../data/karpinConfig';
 import {fetchDashboard} from '../services/mobileData';
 import colors from '../theme/colors';
 import {borderRadius, spacing} from '../theme/design';
+import {getRole, isReadOnlyViewer} from '../utils/permissions';
 
 function HomeScreen({navigation}) {
   const {logout, token, user} = useAuth();
-  const role = user?.role === 'petugas' ? 'petugas' : 'admin';
+  const role = roleContent[getRole(user)] ? getRole(user) : 'admin';
   const currentRole = roleContent[role];
-  const scopeLabel = role === 'admin' ? 'Monitoring Puskesmas' : `Petugas ${user?.posyandu?.name || 'Posyandu'}`;
+  const readOnlyViewer = isReadOnlyViewer(user);
+  const scopeLabel = role === 'admin'
+    ? 'Monitoring Puskesmas'
+    : readOnlyViewer
+      ? 'Dashboard Orang Tua'
+      : `Petugas ${user?.posyandu?.name || 'Posyandu'}`;
   const [loading, setLoading] = React.useState(true);
   const [dashboard, setDashboard] = React.useState(null);
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -38,12 +44,19 @@ function HomeScreen({navigation}) {
         {label: 'Bln Ini', value: dashboard?.stats?.measurements_this_month ?? '-', icon: 'calendar-outline', color: colors.warning},
         {label: 'Total', value: dashboard?.stats?.measurements ?? '-', icon: 'analytics-outline', color: colors.info},
       ]
-    : [
-        {label: 'Anak', value: dashboard?.stats?.children ?? '-', icon: 'people-outline', color: colors.primary},
-        {label: 'Bln Ini', value: dashboard?.stats?.measurements_this_month ?? '-', icon: 'calendar-outline', color: colors.secondary},
-        {label: 'Total', value: dashboard?.stats?.measurements ?? '-', icon: 'analytics-outline', color: colors.warning},
-        {label: 'Aktif', value: dashboard?.stats?.posyandus ?? '-', icon: 'flag-outline', color: colors.info},
-      ];
+    : readOnlyViewer
+      ? [
+          {label: 'Anak', value: dashboard?.stats?.children ?? '-', icon: 'people-outline', color: colors.primary},
+          {label: 'Bln Ini', value: dashboard?.stats?.measurements_this_month ?? '-', icon: 'calendar-outline', color: colors.secondary},
+          {label: 'Total', value: dashboard?.stats?.measurements ?? '-', icon: 'analytics-outline', color: colors.warning},
+          {label: 'Tertaut', value: Array.isArray(dashboard?.children) ? dashboard.children.length : '-', icon: 'link-outline', color: colors.info},
+        ]
+      : [
+          {label: 'Anak', value: dashboard?.stats?.children ?? '-', icon: 'people-outline', color: colors.primary},
+          {label: 'Bln Ini', value: dashboard?.stats?.measurements_this_month ?? '-', icon: 'calendar-outline', color: colors.secondary},
+          {label: 'Total', value: dashboard?.stats?.measurements ?? '-', icon: 'analytics-outline', color: colors.warning},
+          {label: 'Aktif', value: dashboard?.stats?.posyandus ?? '-', icon: 'flag-outline', color: colors.info},
+        ];
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -117,6 +130,34 @@ function HomeScreen({navigation}) {
             </Pressable>
           ))}
         </View>
+
+        {readOnlyViewer && Array.isArray(dashboard?.children) && dashboard.children.length > 0 ? (
+          <>
+            <View style={styles.sectionHead}>
+              <View style={styles.sectionLeft}>
+                <View style={[styles.sectionDot, {backgroundColor: colors.info}]} />
+                <Text style={styles.sectionTitle}>Anak Tertaut</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            </View>
+            <View style={styles.menuGrid}>
+              {dashboard.children.map(child => (
+                <Pressable key={child.id} onPress={() => navigation.navigate('DataAnak', {screen: 'ChildDetail', params: {childId: child.id, title: child.child_name}})}>
+                  <Card padding="lg" style={styles.menuCard}>
+                    <View style={[styles.menuIcon, {backgroundColor: child.gender === 'L' ? colors.infoSoft : colors.purpleSoft}]}>
+                      <Ionicons name={child.gender === 'L' ? 'man-outline' : 'woman-outline'} size={22} color={child.gender === 'L' ? colors.info : colors.purple} />
+                    </View>
+                    <View style={styles.menuTextWrap}>
+                      <Text style={styles.menuTitle}>{child.child_name}</Text>
+                      <Text style={styles.menuSub}>{child.posyandu_name || 'Posyandu'}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.border} />
+                  </Card>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
 
         <View style={styles.sectionHead}>
           <View style={styles.sectionLeft}>

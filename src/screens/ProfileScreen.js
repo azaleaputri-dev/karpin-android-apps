@@ -20,9 +20,10 @@ function ProfileScreen() {
   }, [token]);
 
   const u = profileUser || user;
+  const roleLabel = u?.role === 'admin' ? 'Admin Puskesmas' : u?.role === 'orangtua' ? 'Orang Tua' : 'Petugas Posyandu';
   const infoRows = [
     {icon: 'mail-outline', label: 'Email', value: u?.email || '-'},
-    {icon: 'shield-checkmark-outline', label: 'Role', value: u?.role === 'admin' ? 'Admin Puskesmas' : 'Petugas Posyandu'},
+    {icon: 'shield-checkmark-outline', label: 'Role', value: roleLabel},
     {icon: 'business-outline', label: 'Posyandu', value: u?.posyandu?.name || '-'},
     {icon: 'map-outline', label: 'Alamat', value: u?.posyandu?.address || '-'},
   ];
@@ -40,7 +41,7 @@ function ProfileScreen() {
           <Text style={styles.profileName}>{u?.name || 'Pengguna'}</Text>
           <View style={styles.roleBadge}>
             <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
-            <Text style={styles.roleText}>{u?.role === 'admin' ? 'Admin Puskesmas' : 'Petugas Posyandu'}</Text>
+            <Text style={styles.roleText}>{roleLabel}</Text>
           </View>
         </View>
 

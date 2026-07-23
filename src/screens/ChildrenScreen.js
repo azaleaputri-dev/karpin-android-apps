@@ -10,6 +10,7 @@ import {useAuth} from '../context/AuthContext';
 import {fetchChildren} from '../services/mobileData';
 import colors from '../theme/colors';
 import {borderRadius, spacing} from '../theme/design';
+import {canManageChildren} from '../utils/permissions';
 
 function ChildrenScreen({navigation, route}) {
   const {token, user} = useAuth();
@@ -66,6 +67,7 @@ function ChildrenScreen({navigation, route}) {
   }
 
   const hasFilters = search || gender;
+  const canAddChild = canManageChildren(user);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -109,7 +111,7 @@ function ChildrenScreen({navigation, route}) {
                 ) : null}
               </View>
             </View>
-            {user?.role && !hasFilters ? (
+            {canAddChild && !hasFilters ? (
               <Pressable onPress={() => navigation.navigate('CreateChild')} style={styles.addBtn}>
                 <Ionicons name="add" size={20} color={colors.white} />
                 <Text style={styles.addText}>Tambah Anak</Text>

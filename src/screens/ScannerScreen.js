@@ -13,11 +13,12 @@ import {fetchChildren} from '../services/mobileData';
 import {readNfcTag} from '../services/nfc';
 import colors from '../theme/colors';
 import {borderRadius, spacing} from '../theme/design';
+import {canManageMeasurements} from '../utils/permissions';
 
 const MODES = {NFC: 'NFC', QR: 'QR'};
 
 function ScannerScreen({navigation}) {
-  const {token} = useAuth();
+  const {token, user} = useAuth();
   const [mode, setMode] = React.useState(MODES.NFC);
   const [scanning, setScanning] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
@@ -28,6 +29,7 @@ function ScannerScreen({navigation}) {
 
   const {hasPermission, requestPermission} = useCameraPermission();
   const device = useCameraDevice('back');
+  const canInputMeasurement = canManageMeasurements(user);
 
   const codeScanner = useCodeScanner({
     codeTypes: ['qr'],
@@ -166,12 +168,14 @@ function ScannerScreen({navigation}) {
                   linkText="Buka detail"
                   onPress={() => navigation.navigate('DataAnak', {screen: 'ChildDetail', params: {childId: child.id, title: child.child_name}})}
                 />
-                <Pressable
-                  onPress={() => navigation.navigate('DataAnak', {screen: 'CreateMeasurement', params: {child: {id: child.id, child_name: child.child_name}}})}
-                  style={styles.measBtn}>
-                  <Ionicons name="analytics-outline" size={16} color={colors.white} />
-                  <Text style={styles.measBtnText}>Input Pengukuran</Text>
-                </Pressable>
+                {canInputMeasurement ? (
+                  <Pressable
+                    onPress={() => navigation.navigate('DataAnak', {screen: 'CreateMeasurement', params: {child: {id: child.id, child_name: child.child_name}}})}
+                    style={styles.measBtn}>
+                    <Ionicons name="analytics-outline" size={16} color={colors.white} />
+                    <Text style={styles.measBtnText}>Input Pengukuran</Text>
+                  </Pressable>
+                ) : null}
               </View>
             ))
           : null}

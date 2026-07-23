@@ -11,6 +11,7 @@ import {useAuth} from '../context/AuthContext';
 import {deleteChild, deleteMeasurement, fetchChildDetail} from '../services/mobileData';
 import colors from '../theme/colors';
 import {borderRadius, spacing} from '../theme/design';
+import {canManageChildren, canManageMeasurements} from '../utils/permissions';
 
 function ChildDetailScreen({navigation, route}) {
   const {token, user} = useAuth();
@@ -40,6 +41,8 @@ function ChildDetailScreen({navigation, route}) {
   const summary = payload?.summary;
   const nutrition = payload?.nutrition_status;
   const measurements = payload?.measurements || [];
+  const canEditChild = canManageChildren(user);
+  const canEditMeasurements = canManageMeasurements(user);
 
   function handleDeleteChild() {
     Alert.alert('Hapus data anak', 'Data anak ini akan dihapus permanen. Lanjutkan?', [
@@ -107,7 +110,7 @@ function ChildDetailScreen({navigation, route}) {
               </View>
             ))}
           </View>
-          {user?.role ? (
+          {canEditChild ? (
             <View style={styles.profileActions}>
               <Pressable onPress={() => navigation.navigate('CreateChild', {child})} style={styles.profileActionBtn}>
                 <Ionicons name="create-outline" size={16} color={colors.white} />
@@ -157,7 +160,7 @@ function ChildDetailScreen({navigation, route}) {
           <Text style={styles.sectionSub}>{summary?.total_measurements || 0} data</Text>
         </View>
 
-        {user?.role ? (
+        {canEditMeasurements ? (
           <Pressable onPress={() => navigation.navigate('CreateMeasurement', {child, devices: payload?.devices || []})} style={styles.addMeasBtn}>
             <Ionicons name="add-circle" size={20} color={colors.white} />
             <Text style={styles.addMeasText}>Tambah Pengukuran</Text>
@@ -184,7 +187,7 @@ function ChildDetailScreen({navigation, route}) {
                 <View style={styles.pill}><Ionicons name="thermometer-outline" size={14} color={colors.warning} /><Text style={styles.pillText}>{item.temperature_c != null ? `${item.temperature_c}°C` : '-'}</Text></View>
               </View>
               {item.notes ? <Text style={styles.measNote}>{item.notes}</Text> : null}
-              {user?.role ? (
+              {canEditMeasurements ? (
                 <View style={styles.measActions}>
                   <Pressable onPress={() => navigation.navigate('CreateMeasurement', {child, devices: payload?.devices || [], measurement: item})} style={styles.measActionBtn}>
                     <Ionicons name="create-outline" size={14} color={colors.primary} />

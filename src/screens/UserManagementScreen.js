@@ -6,7 +6,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Card from '../components/Card';
 import PrimaryButton from '../components/PrimaryButton';
 import {useAuth} from '../context/AuthContext';
-import {createUser, deleteUser, fetchUsers, updateUser} from '../services/mobileData';
+import {createUser, deleteUser, fetchChildren, fetchPosyandus, fetchUsers, updateUser} from '../services/mobileData';
 import colors from '../theme/colors';
 import {borderRadius, spacing} from '../theme/design';
 
@@ -21,6 +21,10 @@ function UserManagementScreen() {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState('petugas');
+  const [formPosyanduId, setFormPosyanduId] = useState('');
+  const [formChildIds, setFormChildIds] = useState([]);
+  const [childOptions, setChildOptions] = useState([]);
+  const [posyanduOptions, setPosyanduOptions] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async isRefresh => {
@@ -29,17 +33,48 @@ function UserManagementScreen() {
     finally { setLoading(false); setRefreshing(false); }
   }, [token]);
 
-  useEffect(() => {load(false);}, [load]);
+  const loadChildOptions = useCallback(async () => {
+    try { const r = await fetchChildren(token); setChildOptions(r.data || []); }
+    catch { setChildOptions([]); }
+  }, [token]);
 
-  function openCreate() { setEditItem(null); setFormName(''); setFormEmail(''); setFormPassword(''); setFormRole('petugas'); setShowForm(true); }
+  const loadPosyanduOptions = useCallback(async () => {
+    try { const r = await fetchPosyandus(token); setPosyanduOptions(r.data || []); }
+    catch { setPosyanduOptions([]); }
+  }, [token]);
 
-  function openEdit(item) { setEditItem(item); setFormName(item.name || ''); setFormEmail(item.email || ''); setFormPassword(''); setFormRole(item.role || 'petugas'); setShowForm(true); }
+  useEffect(() => {load(false); loadChildOptions(); loadPosyanduOptions();}, [load, loadChildOptions, loadPosyanduOptions]);
+
+  function openCreate() { setEditItem(null); setFormName(''); setFormEmail(''); setFormPassword(''); setFormRole('petugas'); setFormPosyanduId(''); setFormChildIds([]); setShowForm(true); }
+
+  function openEdit(item) {
+    setEditItem(item);
+    setFormName(item.name || '');
+    setFormEmail(item.email || '');
+    setFormPassword('');
+    setFormRole(item.role || 'petugas');
+    setFormPosyanduId(item.posyandu?.id ? String(item.posyandu.id) : '');
+    setFormChildIds((item.children || []).map(child => Number(child.id)));
+    setShowForm(true);
+  }
+
+  function toggleChild(childId) {
+    setFormChildIds(current => current.includes(childId) ? current.filter(id => id !== childId) : [...current, childId]);
+  }
 
   async function handleSave() {
     if (!formName.trim() || !formEmail.trim()) { Alert.alert('Lengkapi data', 'Nama dan email wajib diisi.'); return; }
+    if (formRole === 'petugas' && !formPosyanduId) { Alert.alert('Pilih posyandu', 'Akun petugas harus dihubungkan ke satu posyandu.'); return; }
+    if (formRole === 'orangtua' && formChildIds.length === 0) { Alert.alert('Pilih anak', 'Akun orang tua harus ditautkan minimal ke satu anak.'); return; }
     try {
       setSaving(true);
-      const payload = {name: formName.trim(), email: formEmail.trim(), role: formRole};
+      const payload = {
+        name: formName.trim(),
+        email: formEmail.trim(),
+        role: formRole,
+        posyandu_id: formRole === 'petugas' ? formPosyanduId : null,
+        child_ids: formRole === 'orangtua' ? formChildIds : [],
+      };
       if (!editItem) payload.password = formPassword || 'password';
       if (editItem) await updateUser(editItem.id, payload, token);
       else await createUser(payload, token);
@@ -58,7 +93,9 @@ function UserManagementScreen() {
     ]);
   }
 
-  const roleIcon = r => r === 'admin' ? 'shield-checkmark' : 'person';
+  const roleIcon = r => r === 'admin' ? 'shield-checkmark' : r === 'orangtua' ? 'people-circle' : 'person';
+  const roleColor = r => r === 'admin' ? colors.primary : r === 'orangtua' ? colors.purple : colors.info;
+  const roleBg = r => r === 'admin' ? colors.primarySoft : r === 'orangtua' ? colors.purpleSoft : colors.infoSoft;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -89,7 +126,44 @@ function UserManagementScreen() {
                 <View style={styles.rolePicker}>
                   <Pressable onPress={() => setFormRole('admin')} style={[styles.roleBtn, formRole === 'admin' && styles.roleActive]}><Text style={[styles.roleText, formRole === 'admin' && styles.roleTextActive]}>Admin</Text></Pressable>
                   <Pressable onPress={() => setFormRole('petugas')} style={[styles.roleBtn, formRole === 'petugas' && styles.roleActive]}><Text style={[styles.roleText, formRole === 'petugas' && styles.roleTextActive]}>Petugas</Text></Pressable>
+                  <Pressable onPress={() => setFormRole('orangtua')} style={[styles.roleBtn, formRole === 'orangtua' && styles.roleActive]}><Text style={[styles.roleText, formRole === 'orangtua' && styles.roleTextActive]}>Orangtua</Text></Pressable>
                 </View>
+                {formRole === 'petugas' ? (
+                  <View style={styles.childPicker}>
+                    <Text style={styles.childPickerTitle}>Posyandu petugas</Text>
+                    {posyanduOptions.map(posyandu => {
+                      const active = String(formPosyanduId) === String(posyandu.id);
+                      return (
+                        <Pressable key={posyandu.id} onPress={() => setFormPosyanduId(String(posyandu.id))} style={[styles.childOption, active && styles.childOptionActive]}>
+                          <Ionicons name={active ? 'radio-button-on' : 'radio-button-off'} size={18} color={active ? colors.primary : colors.textMuted} />
+                          <View style={styles.childOptionBody}>
+                            <Text style={styles.childOptionName}>{posyandu.name}</Text>
+                            <Text style={styles.childOptionMeta}>{posyandu.address || '-'}</Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : null}
+                {formRole === 'orangtua' ? (
+                  <View style={styles.childPicker}>
+                    <Text style={styles.childPickerTitle}>Anak yang bisa dilihat</Text>
+                    {childOptions.length === 0 ? (
+                      <Text style={styles.childEmpty}>Belum ada data anak.</Text>
+                    ) : childOptions.map(child => {
+                      const active = formChildIds.includes(Number(child.id));
+                      return (
+                        <Pressable key={child.id} onPress={() => toggleChild(Number(child.id))} style={[styles.childOption, active && styles.childOptionActive]}>
+                          <Ionicons name={active ? 'checkbox' : 'square-outline'} size={18} color={active ? colors.primary : colors.textMuted} />
+                          <View style={styles.childOptionBody}>
+                            <Text style={styles.childOptionName}>{child.child_name}</Text>
+                            <Text style={styles.childOptionMeta}>{child.posyandu?.name || child.posyandu_name || '-'}</Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : null}
                 <View style={styles.formActions}>
                   <Pressable onPress={() => setShowForm(false)} style={styles.cancelBtn}><Text style={styles.cancelText}>Batal</Text></Pressable>
                   <PrimaryButton loading={saving} onPress={handleSave} style={styles.flexBtn}>{editItem ? 'Simpan' : 'Tambah'}</PrimaryButton>
@@ -102,15 +176,15 @@ function UserManagementScreen() {
         renderItem={({item}) => (
           <Card padding="lg" style={styles.card}>
             <View style={styles.cardRow}>
-              <View style={[styles.avatar, {backgroundColor: item.role === 'admin' ? colors.primarySoft : colors.infoSoft}]}>
-                <Ionicons name={roleIcon(item.role)} size={22} color={item.role === 'admin' ? colors.primary : colors.info} />
+              <View style={[styles.avatar, {backgroundColor: roleBg(item.role)}]}>
+                <Ionicons name={roleIcon(item.role)} size={22} color={roleColor(item.role)} />
               </View>
               <View style={styles.cardBody}>
                 <Text style={styles.cardTitle}>{item.name || '-'}</Text>
                 <Text style={styles.cardSub}>{item.email || '-'}</Text>
               </View>
-              <View style={[styles.roleTag, {backgroundColor: item.role === 'admin' ? colors.primarySoft : colors.infoSoft}]}>
-                <Text style={[styles.roleTagText, {color: item.role === 'admin' ? colors.primary : colors.info}]}>{item.role || '-'}</Text>
+              <View style={[styles.roleTag, {backgroundColor: roleBg(item.role)}]}>
+                <Text style={[styles.roleTagText, {color: roleColor(item.role)}]}>{item.role || '-'}</Text>
               </View>
               {user?.role === 'admin' ? (
                 <View style={styles.cardActions}>
@@ -141,6 +215,14 @@ const styles = StyleSheet.create({
   roleActive: {backgroundColor: colors.primarySoft},
   roleText: {fontSize: 14, fontWeight: '700', color: colors.textMuted},
   roleTextActive: {color: colors.primary},
+  childPicker: {marginTop: spacing.md, gap: spacing.sm},
+  childPickerTitle: {fontSize: 13, fontWeight: '800', color: colors.text},
+  childEmpty: {fontSize: 13, color: colors.textMuted},
+  childOption: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: borderRadius.md, padding: spacing.md, backgroundColor: colors.graySoft},
+  childOptionActive: {backgroundColor: colors.primarySoft},
+  childOptionBody: {flex: 1},
+  childOptionName: {fontSize: 14, fontWeight: '700', color: colors.text},
+  childOptionMeta: {fontSize: 11, color: colors.textMuted, marginTop: 1},
   formActions: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg},
   cancelBtn: {flex: 1, borderRadius: borderRadius.lg, paddingVertical: 15, alignItems: 'center', justifyContent: 'center', minHeight: 50, backgroundColor: colors.graySoft},
   cancelText: {fontSize: 15, fontWeight: '800', color: colors.textMuted},
